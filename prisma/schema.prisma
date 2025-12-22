@@ -1,0 +1,73 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Organization {
+  id        String        @id @default(cuid())
+  name      String
+  createdAt DateTime      @default(now())
+  categories Category[]
+  connections IntegrationConnection[]
+  transactions Transaction[]
+}
+
+model IntegrationConnection {
+  id               String        @id @default(cuid())
+  organizationId   String
+  provider         Provider
+  externalAccountId String?
+  createdAt        DateTime      @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  transactions  Transaction[]
+}
+
+model Category {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  transactions  Transaction[]
+
+  @@unique([organizationId, name])
+}
+
+model Transaction {
+  id             String   @id @default(cuid())
+  organizationId String
+  connectionId   String
+  provider       Provider
+  externalId     String
+  occurredAt     DateTime
+  status         TxStatus
+  amountCents    BigInt
+  currency       String   @default("USD")
+  description    String
+  categoryId     String?
+  rawPayload     Json
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization           @relation(fields: [organizationId], references: [id])
+  connection   IntegrationConnection @relation(fields: [connectionId], references: [id])
+  category     Category?             @relation(fields: [categoryId], references: [id])
+
+  @@unique([connectionId, externalId])
+  @@index([organizationId, occurredAt])
+}
+
+enum Provider {
+  PLAID
+  STRIPE
+}
+
+enum TxStatus {
+  posted
+  pending
+}
